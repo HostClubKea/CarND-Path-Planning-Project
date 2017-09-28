@@ -2,16 +2,39 @@
 // Created by dmitr on 20.09.2017.
 //
 
-#include "map.h"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <array>
+#include "Map.h"
 
-void Map::init(vector<double> maps_s, vector<double> maps_x, vector<double> maps_y, vector<double> maps_dx,
-               vector<double> maps_dy) {
-    this->maps_s = maps_s;
-    this->maps_x = maps_x;
-    this->maps_y = maps_y;
-    this->maps_dx = maps_dx;
-    this->maps_dy = maps_dy;
+Map::Map(const string map_file) {
+    // The max s value before wrapping around the track back to 0
+    double max_s = 6945.554;
+
+    ifstream in_map_(map_file.c_str(), ifstream::in);
+
+    string line;
+    while (getline(in_map_, line)) {
+        istringstream iss(line);
+        double x;
+        double y;
+        float s;
+        float d_x;
+        float d_y;
+        iss >> x;
+        iss >> y;
+        iss >> s;
+        iss >> d_x;
+        iss >> d_y;
+        maps_x.push_back(x);
+        maps_y.push_back(y);
+        maps_s.push_back(s);
+        maps_dx.push_back(d_x);
+        maps_dy.push_back(d_y);
+    }
 }
+
 
 double Map::distance(double x1, double y1, double x2, double y2) {
     return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
@@ -100,7 +123,7 @@ vector<double> Map::getFrenet(double x, double y, double theta) {
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y using splines
-vector<double> Map::getXY(double s, double d) {
+vector<double> Map::getXY(double s, double d){
     int new_start_wp = -2;
 
     while(s > maps_s[new_start_wp+2] && (new_start_wp < (int)(maps_s.size()-1) ))
@@ -118,6 +141,7 @@ vector<double> Map::getXY(double s, double d) {
         vector<double> dx_;
         vector<double> dy_;
 
+        cout << "-------------------------" << endl;
         for(int i=0; i < 4; i++){
             int wp=(start_wp+i)%maps_x.size();
             s_.push_back(maps_s[wp]);
@@ -125,6 +149,7 @@ vector<double> Map::getXY(double s, double d) {
             y_.push_back(maps_y[wp]);
             dx_.push_back(maps_dx[wp]);
             dy_.push_back(maps_dy[wp]);
+            cout << maps_s[wp] << " " << wp << " " << i << endl;
         }
 
         s_x.set_points(s_,x_);
@@ -138,4 +163,13 @@ vector<double> Map::getXY(double s, double d) {
     double y = s_y(s) + d*s_dy(s);
 
     return {x,y};
+}
+
+double Map::laneToD(const int lane) {
+    constexpr array<double, 3> laneCenters = { 2.0, 6.0, 10.0 }; //-9.75 -6 -2
+    return laneCenters[lane];
+}
+
+int Map::dToLane(const double d) {
+    return 0;
 }

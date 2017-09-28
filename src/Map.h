@@ -9,6 +9,7 @@
 #include "spline.h"
 #include <vector>
 #include <math.h>
+#include <string>
 
 using namespace std;
 
@@ -31,7 +32,7 @@ protected:
     int start_wp = -1000;
 
 public:
-    void init(vector<double> maps_s, vector<double> maps_x, vector<double> maps_y, vector<double> maps_dx, vector<double> maps_dy);
+    Map(const string map_file);
 
     double distance(double x1, double y1, double x2, double y2);
 
@@ -42,6 +43,10 @@ public:
     vector<double> getFrenet(double x, double y, double theta);
 
     vector<double> getXY(double s, double d);
+
+    double laneToD(const int lane);
+
+    static int dToLane(const double d);
 };
 
 
