@@ -66,8 +66,8 @@ int main() {
                             auto trajectory = vehicle.update(telemetry);
                             cout << "333" << endl;
                             json msgJson;
-                            msgJson["next_x"] = trajectory.get_next_x_vals();
-                            msgJson["next_y"] = trajectory.get_next_y_vals();
+                            msgJson["next_x"] = trajectory[0];
+                            msgJson["next_y"] = trajectory[1];
 
                             auto msg = "42[\"control\"," + msgJson.dump() + "]";
 

@@ -6,6 +6,7 @@
 #define PATH_PLANNING_TRAJECTORY_H
 
 #include <vector>
+#include "SensorFusion.h"
 
 using namespace std;
 
@@ -13,24 +14,6 @@ using namespace std;
 class Trajectory {
 private:
     /* Different weights constant for calculation cost*/
-    constexpr static double S_JERK_WEIGHT = 1;
-    constexpr static double S_MAX_JERK = 9.0;
-    constexpr static double S_MAX_JERK_WEIGHT= 100000;
-
-    constexpr static double D_JERK_WEIGHT = 1;
-    constexpr static double D_MAX_JERK = 9.0;
-    constexpr static double D_MAX_JERK_WEIGHT= 100000;
-
-    constexpr static double COLLISION_WEIGHT= 1000000;
-
-    constexpr static double VELOCITY_WEIGHT = 1;
-    constexpr static double VELOCITY_MAX_WEIGHT = 100000;
-
-    constexpr static double MAX_SPEED = 49.5*0.44704;
-
-    constexpr static double COST_HORIZON_T = 10;
-    constexpr static double COST_DT = 0.2;
-
     double total_cost = -1;
 
     vector<double> next_x_vals;
@@ -38,6 +21,8 @@ private:
 
     vector<double> s_coeff;
     vector<double> d_coeff;
+
+    SensorFusion* sensorFusion;
 
     vector<double> JMT(const vector<double>& start, const vector<double>& end, const double t);
 
@@ -80,7 +65,8 @@ public:
     void set_next_x_vals(vector<double> next_x_vals) { this->next_x_vals = next_x_vals; }
     void set_next_y_vals(vector<double> next_y_vals) { this->next_y_vals = next_y_vals; }
 
-    Trajectory(vector<double> start_s, vector<double> end_s, double s_T, vector<double> start_d, vector<double> end_d, double d_T);
+    Trajectory(vector<double> start_s, vector<double> end_s, double s_T, vector<double> start_d,
+                   vector<double> end_d, double d_T, SensorFusion *sensor_fusion);
 
     double cost();
 };

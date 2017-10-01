@@ -31,6 +31,7 @@ protected:
 
     int start_wp = -1000;
 
+
 public:
     Map(const string map_file);
 

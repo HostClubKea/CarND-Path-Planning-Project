@@ -1,12 +1,13 @@
 #include "Trajectory.h"
 
 #include "Eigen-3.3/Eigen/Dense"
+#include "Constants.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-Trajectory::Trajectory(vector<double> start_s, vector<double> end_s, double s_T,
-                       vector<double> start_d, vector<double> end_d, double d_T) {
+Trajectory::Trajectory(vector<double> start_s, vector<double> end_s, double s_T, vector<double> start_d,
+                       vector<double> end_d, double d_T, SensorFusion *sensor_fusion){
 
 //    vector<double> start_s = {};
 //    vec
@@ -17,6 +18,9 @@ Trajectory::Trajectory(vector<double> start_s, vector<double> end_s, double s_T,
 
     end_s_ = end_s;
     end_d_ = end_d;
+
+    this->sensorFusion = sensor_fusion;
+
 }
 
 vector<double> Trajectory::JMT(const vector<double> &start, const vector<double> &end, const double T) {
@@ -84,8 +88,6 @@ double Trajectory::cost() {
             total_cost += D_MAX_JERK_WEIGHT*max_jerk_d_cost();
             total_cost += VELOCITY_WEIGHT*velocity_cost();
             total_cost += VELOCITY_MAX_WEIGHT*max_velocity_cost();
-
-
 
         }
                   //  jerk_cost() + acceleration_cost() + velocity_cost() + safety_cost()  + lane_potential_cost(); //+ collision_cost()
@@ -160,6 +162,20 @@ double Trajectory::lane_potential_cost() {
 }
 
 double Trajectory::collision_cost() {
+    double t = 0;
+
+    while(t < max(s_duration, d_duration)){
+
+        double s = position_at(s_coeff, t);
+        double d = position_at(d_coeff, t);
+
+        for(auto vehicle: sensorFusion->vehicles){
+            if(vehicle.collide(s, d, t)){
+                return 1;
+            }
+        }
+        t+= COST_DT;
+    }
     return 0;
 }
 

@@ -7,10 +7,10 @@
 #include <sstream>
 #include <array>
 #include "Map.h"
+#include "Constants.h"
 
 Map::Map(const string map_file) {
     // The max s value before wrapping around the track back to 0
-    double max_s = 6945.554;
 
     ifstream in_map_(map_file.c_str(), ifstream::in);
 
@@ -33,6 +33,38 @@ Map::Map(const string map_file) {
         maps_dx.push_back(d_x);
         maps_dy.push_back(d_y);
     }
+
+    vector<double> s_;
+    vector<double> x_;
+    vector<double> y_;
+    vector<double> dx_;
+    vector<double> dy_;
+
+    s_.push_back(maps_s[maps_s.size()] - MAP_MAX_S);
+    x_.push_back(maps_x[maps_s.size()]);
+    y_.push_back(maps_y[maps_s.size()]);
+    dx_.push_back(maps_dx[maps_s.size()]);
+    dy_.push_back(maps_dy[maps_s.size()]);
+
+    for(int i=0; i < maps_s.size(); i++){
+        s_.push_back(maps_s[i]);
+        x_.push_back(maps_x[i]);
+        y_.push_back(maps_y[i]);
+        dx_.push_back(maps_dx[i]);
+        dy_.push_back(maps_dy[i]);
+    }
+
+    s_.push_back(MAP_MAX_S);
+    x_.push_back(maps_x[0]);
+    y_.push_back(maps_y[0]);
+    dx_.push_back(maps_dx[0]);
+    dy_.push_back(maps_dy[0]);
+
+    s_x.set_points(s_,x_);
+    s_y.set_points(s_,y_);
+    s_dx.set_points(s_,dx_);
+    s_dy.set_points(s_,dy_);
+
 }
 
 
@@ -124,7 +156,7 @@ vector<double> Map::getFrenet(double x, double y, double theta) {
 
 // Transform from Frenet s,d coordinates to Cartesian x,y using splines
 vector<double> Map::getXY(double s, double d){
-    int new_start_wp = -2;
+/*    int new_start_wp = -2;
 
     while(s > maps_s[new_start_wp+2] && (new_start_wp < (int)(maps_s.size()-1) ))
     {
@@ -156,8 +188,10 @@ vector<double> Map::getXY(double s, double d){
         s_y.set_points(s_,y_);
         s_dx.set_points(s_,dx_);
         s_dy.set_points(s_,dy_);
-    }
+    }*/
 
+    while(s > MAP_MAX_S)
+        s -= MAP_MAX_S;
 
     double x = s_x(s) + d*s_dx(s);
     double y = s_y(s) + d*s_dy(s);

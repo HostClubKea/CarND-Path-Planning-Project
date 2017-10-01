@@ -10,6 +10,7 @@
 #include "Telemetry.h"
 #include "Trajectory.h"
 #include "PathPlanner.h"
+#include "SensorFusion.h"
 
 class Vehicle {
     /* Position in Cartesian coordinates */
@@ -30,13 +31,17 @@ class Vehicle {
     /* Current lane. */
     int lane;
 
+    vector<double> start_s;
+    vector<double> start_d;
+
     Map& map;
     PathPlanner pathPlanner;
+    SensorFusion sensorFusion;
 
 public:
     Vehicle(Map& map);
 
-    Trajectory update(const Telemetry& telemetry);
+    vector<vector<double>> update(const Telemetry& telemetry);
 };
 
 
