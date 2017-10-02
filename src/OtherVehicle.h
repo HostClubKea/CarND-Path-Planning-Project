@@ -22,7 +22,7 @@ public:
     vector<double> predicted_s;
     vector<double> trajectory;
 
-    OtherVehicle(Map& map, SensorFusionData& sensor_fusion_data, double start_time);
+    OtherVehicle(Map& map, SensorFusionData& sensor_fusion_data, int lap, double start_time);
 
     bool collide(double s, double d, double dt);
 };

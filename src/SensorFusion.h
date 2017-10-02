@@ -13,7 +13,7 @@ class SensorFusion {
 public:
     vector<OtherVehicle> vehicles;
 
-    void update(const Telemetry &telemetry, Map& map, double start_time);
+    void update(const Telemetry &telemetry, Map& map, int lap, double start_time);
 
     OtherVehicle leading_vehicle(int lane, double s);
 

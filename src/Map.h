@@ -47,7 +47,8 @@ public:
 
     double laneToD(const int lane);
 
-    static int dToLane(const double d);
+    int dToLane(const double d);
+
 };
 
 

@@ -4,10 +4,10 @@
 
 #include "SensorFusion.h"
 
-void SensorFusion::update(const Telemetry &telemetry, Map& map, double start_time) {
+void SensorFusion::update(const Telemetry &telemetry, Map& map, int lap, double start_time) {
     vehicles.clear();
     for(auto sensor_fusion_data: telemetry.sensor_fusion_data){
-        vehicles.push_back(OtherVehicle(map, sensor_fusion_data, start_time));
+        vehicles.push_back(OtherVehicle(map, sensor_fusion_data, lap, start_time));
     }
 }
 

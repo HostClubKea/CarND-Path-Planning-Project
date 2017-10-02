@@ -6,8 +6,10 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+Trajectory::Trajectory() {}
+
 Trajectory::Trajectory(vector<double> start_s, vector<double> end_s, double s_T, vector<double> start_d,
-                       vector<double> end_d, double d_T, SensorFusion *sensor_fusion){
+                       vector<double> end_d, double d_T, SensorFusion *sensor_fusion, Map *map){
 
 //    vector<double> start_s = {};
 //    vec
@@ -16,10 +18,11 @@ Trajectory::Trajectory(vector<double> start_s, vector<double> end_s, double s_T,
     this->s_duration = s_T;
     this->d_duration = d_T;
 
-    end_s_ = end_s;
-    end_d_ = end_d;
+    this->end_s_ = end_s;
+    this->end_d_ = end_d;
 
     this->sensorFusion = sensor_fusion;
+    this->map = map;
 
 }
 
@@ -77,24 +80,6 @@ EXAMPLE
     return result;
 }
 
-double Trajectory::cost() {
-    if(total_cost < 0){
-        /* As simple optimization - if collisiotion happenes, we don't need to evaluate other staff - trajectory is bad anyway */
-        total_cost = COLLISION_WEIGHT*collision_cost();
-        if(total_cost < 1.0 ) {
-            total_cost += S_JERK_WEIGHT*jerk_s_cost();
-            total_cost += D_JERK_WEIGHT*jerk_d_cost();
-            total_cost += S_MAX_JERK_WEIGHT*max_jerk_s_cost();
-            total_cost += D_MAX_JERK_WEIGHT*max_jerk_d_cost();
-            total_cost += VELOCITY_WEIGHT*velocity_cost();
-            total_cost += VELOCITY_MAX_WEIGHT*max_velocity_cost();
-
-        }
-                  //  jerk_cost() + acceleration_cost() + velocity_cost() + safety_cost()  + lane_potential_cost(); //+ collision_cost()
-    }
-    return total_cost;
-}
-
 double Trajectory::position_at(const vector<double> &a, const double t) {
     const auto t2 = t * t;
     const auto t3 = t2 * t;
@@ -144,21 +129,77 @@ double Trajectory::velocity_cost() {
 
 double Trajectory::max_velocity_cost() {
     double t = 0.0;
+
+    double sd_xy_coeff = 1;
+
+    for(double t = COST_DT; t<min(s_duration, d_duration); t+=min(s_duration, d_duration)/3){
+        double s0 = position_at(s_coeff, min(t - COST_DT, s_duration));
+        double s1 = position_at(s_coeff, min(t, s_duration));
+        double d0 = position_at(d_coeff, min(t - COST_DT, d_duration));
+        double d1 = position_at(d_coeff, min(t, d_duration));
+
+        double dist_sd = sqrt(pow(s0-s1, 2) + pow(d0-d1, 2));
+
+        auto xy0 = map->getXY(s0, d0);
+        auto xy1 = map->getXY(s1, d1);
+
+        double dist_xy = sqrt(pow(xy0[0]-xy1[0], 2) + pow(xy0[1]-xy1[1], 2));
+
+        sd_xy_coeff = max(sd_xy_coeff, dist_xy/dist_sd);
+    }
+
+
     while(t < COST_HORIZON_T){
+
         double v_s = velocity_at(s_coeff, min(t, s_duration));
         double v_d = velocity_at(d_coeff, min(t, d_duration));
         double v = sqrt(v_s*v_s+v_d*v_d);
 
-        if(v > MAX_SPEED)
+
+        if(v*sd_xy_coeff > MAX_SPEED)
             return 1;
         t+=COST_DT;
     }
     return 0;
+
+//    double t = COST_DT;
+//    while(t < COST_HORIZON_T){
+//        double s0 = position_at(s_coeff, min(t - COST_DT, s_duration));
+//        double s1 = position_at(s_coeff, min(t, s_duration));
+//        double d0 = position_at(d_coeff, min(t - COST_DT, d_duration));
+//        double d1 = position_at(d_coeff, min(t, d_duration));
+//
+//        auto xy0 = map->getXY(s0, d0);
+//        auto xy1 = map->getXY(s1, d1);
+//
+//        double dist = sqrt(pow(xy0[0]-xy1[0], 2) + pow(xy0[1]-xy1[1], 2));
+//        double v = dist/COST_DT;
+//
+//        if(v > MAX_SPEED)
+//            return 1;
+//        t+=COST_DT;
+//    }
+//    return 0;
 }
 
 
 double Trajectory::lane_potential_cost() {
-    return 0;
+    double lane_speed = 100.0;
+    double lane_free_distance = 100.0;
+
+    int lane = map->dToLane(end_d_[0]);
+    double s = position_at(s_coeff, 0);
+
+    for(auto vehicle: sensorFusion->vehicles){
+        if(lane == vehicle.lane && s < vehicle.s){
+            if(lane_free_distance > vehicle.s-s) {
+                lane_free_distance = min(lane_free_distance, vehicle.s - s);
+                lane_speed = min(lane_speed, vehicle.v);
+            }
+        }
+    }
+
+    return 1/lane_speed  + 1/lane_free_distance;
 }
 
 double Trajectory::collision_cost() {
@@ -179,8 +220,34 @@ double Trajectory::collision_cost() {
     return 0;
 }
 
+double logistic(double x){
+    // A function that returns a value between 0 and 1 for x in the range[0, infinity] and - 1 to 1 for x in
+    // the range[-infinity, infinity]. Useful for cost functions.
+    return 2.0 / (1 + exp(-x)) - 1.0;
+}
+
 double Trajectory::safety_cost() {
-    return 0;
+    double t = 0;
+    double safety_cost = 0;
+    while(t < max(s_duration, d_duration)) {
+        double s = position_at(s_coeff, t);
+        double d = position_at(d_coeff, t);
+        for (auto vehicle: sensorFusion->vehicles) {
+            int ind = t/COST_DT;
+            if(ind < vehicle.predicted_s.size()) {
+                double d_s = abs(s - vehicle.predicted_s[t / COST_DT]);
+                double d_d = abs(d - vehicle.d);
+
+                if(d_s < 8 && d_d < 4) {
+                    double dist = sqrt(d_s * d_s + d_d * d_d);
+                    safety_cost += logistic(2 * CAR_WIDTH / dist);
+                }
+            }
+        }
+        t+= COST_DT;
+    }
+    safety_cost = safety_cost / t;
+    return safety_cost;
 }
 
 double Trajectory::get_s_at_t(const double t) {
@@ -254,6 +321,40 @@ double Trajectory::max_jerk_d_cost() {
     }
     return 0;
 }
+
+double Trajectory::cost() {
+    if(total_cost < 0){
+        /* As simple optimization - if collisiotion happenes, we don't need to evaluate other staff - trajectory is bad anyway */
+        total_cost = COLLISION_WEIGHT*collision_cost();
+        if(total_cost < 1.0 ) {
+            total_cost += S_JERK_WEIGHT*jerk_s_cost();
+            total_cost += D_JERK_WEIGHT*jerk_d_cost();
+            total_cost += S_MAX_JERK_WEIGHT*max_jerk_s_cost();
+            total_cost += D_MAX_JERK_WEIGHT*max_jerk_d_cost();
+
+            total_cost += VELOCITY_WEIGHT*velocity_cost();
+            total_cost += VELOCITY_MAX_WEIGHT*max_velocity_cost();
+            total_cost += SAFETY_WEIGHT*safety_cost();
+            total_cost += 1000*lane_potential_cost();
+
+        }
+        //  jerk_cost() + acceleration_cost() + velocity_cost() + safety_cost()  + lane_potential_cost(); //+ collision_cost()
+    }
+    return total_cost;
+}
+
+int Trajectory::lane() {
+    return map->dToLane(end_d_[0]);
+}
+
+void Trajectory::print() {
+    cout << "LANE: " << lane() << ", S: " << end_s_[0] << ", ST: "  <<  s_duration << ", D: " << end_d_[0] << ", DT: " << d_duration;
+    cout << " COST: " << cost() << " | " << COLLISION_WEIGHT*collision_cost() << " " << S_JERK_WEIGHT*jerk_s_cost() << " " << D_JERK_WEIGHT*jerk_d_cost();
+    cout << " " << S_MAX_JERK_WEIGHT*max_jerk_s_cost() << " " << D_MAX_JERK_WEIGHT*max_jerk_d_cost() << " " << VELOCITY_WEIGHT*velocity_cost();
+    cout << " " << VELOCITY_MAX_WEIGHT*max_velocity_cost() << " " << 1000*lane_potential_cost() << endl;
+}
+
+
 
 
 

@@ -23,6 +23,9 @@ Trajectory PathPlanner::plan(vector<double> start_s, vector<double> start_d, Map
 
         for (double d_t = MIN_D_T; d_t < MAX_D_T; d_t += STEP_D_T) {
             vector<double> end_d = {target_d, 0, 0};
+
+         //   cout << target_d << endl;
+
             for (double v = MIN_SPEED; v < MAX_SPEED; v += STEP_SPEED) {
                 for (double s_t = MIN_S_T; s_t < MAX_S_T; s_t += STEP_S_T) {
                     double base_target_s = start_s[0] + (start_s[1]+v)/2*s_t;
@@ -30,14 +33,14 @@ Trajectory PathPlanner::plan(vector<double> start_s, vector<double> start_d, Map
                     for(int j = -2; j < 3; j++){
                         vector<double> end_s = {base_target_s + base_target_s/10.0*j,v,0};
                         if(end_s[0] > start_s[0])
-                            trajectories.push_back(Trajectory(start_s, end_s, s_t, start_d, end_d, d_t, &sensorFusion));
+                            trajectories.push_back(Trajectory(start_s, end_s, s_t, start_d, end_d, d_t, &sensorFusion, &map));
                     }
                 }
             }
         }
     }
 
-    cout << trajectories.size() << endl;
+    cout << "TRAGECTORY COUNT: " <<trajectories.size() << endl;
 
     auto min_score_trajectory = trajectories[0];
     double min_score = min_score_trajectory.cost();
@@ -51,6 +54,24 @@ Trajectory PathPlanner::plan(vector<double> start_s, vector<double> start_d, Map
 
         }
     }
+
+//    vector<Trajectory> best_lanes;
+//    best_lanes.resize(3);
+//    vector<double> best_costs = {1000000000000, 1000000000000, 1000000000000};
+//
+//    for(auto trajectory: trajectories){
+//        if(trajectory.cost() < best_costs[trajectory.lane()]){
+//            best_costs[trajectory.lane()] = trajectory.cost();
+//            best_lanes[trajectory.lane()] = trajectory;
+//        }
+//
+//    }
+//
+//    cout << "------------------------------------------" << endl;
+//    for(Trajectory trajectory: best_lanes){
+//        trajectory.print();
+//    }
+
 
     return min_score_trajectory;
 

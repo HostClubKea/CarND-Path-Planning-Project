@@ -23,6 +23,7 @@ private:
     vector<double> d_coeff;
 
     SensorFusion* sensorFusion;
+    Map* map;
 
     vector<double> JMT(const vector<double>& start, const vector<double>& end, const double t);
 
@@ -48,7 +49,6 @@ public:
     double s_duration;
     double d_duration;
 
-
     vector<double> end_s_;
     vector<double> end_d_;
 
@@ -59,16 +59,14 @@ public:
     double get_as_at_t(const double t);
     double get_ad_at_t(const double t);
 
-    vector<double>& get_next_x_vals() { return next_x_vals; }
-    vector<double>& get_next_y_vals() { return next_y_vals; }
-
-    void set_next_x_vals(vector<double> next_x_vals) { this->next_x_vals = next_x_vals; }
-    void set_next_y_vals(vector<double> next_y_vals) { this->next_y_vals = next_y_vals; }
+    Trajectory();
 
     Trajectory(vector<double> start_s, vector<double> end_s, double s_T, vector<double> start_d,
-                   vector<double> end_d, double d_T, SensorFusion *sensor_fusion);
+                   vector<double> end_d, double d_T, SensorFusion *sensor_fusion, Map *map);
 
     double cost();
+    int lane();
+    void print();
 };
 
 

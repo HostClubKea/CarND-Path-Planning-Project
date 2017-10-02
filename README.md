@@ -1,3 +1,61 @@
+# Udacity Self-Driving Car Engineer Nanodegree
+# Path Planning Project
+
+## Introduction
+
+The goal of this project is to navigate a car around track which simulates highway environment, based on track waypoints, car telemetry and sensor fusion data. Car behaviour should be safe and comfortable for passengers:
+1. Car should stay in lane for most of the time (can leave lane no more then for 3 sec)
+2. Speed should be close to 50 mph, or to traffic speed in lane
+3. Car shouldn't exceed certain amount of acceleration and jerk
+4. Should avoid any collisions
+
+This implementation is summarized in the following steps:
+1. Generate predictions from sensor fusion data
+2. Generate trajectories for the car
+3. Determine best trajectory
+4. Produce new path
+
+## Implementation
+To work with Frenet coordinates was changed `getXY` implementation, which makes conversion more precise. From waypoint information 4 splines are generated
+ and then used to get x and yneous telemetry data for the ego vehicle, but it also returns the list of points from previously generated path. This is used to project the car's state into the future and a "planning state" is determined based on the difference between points at some prescribed number of points along the previous path. In effect, this can help to generate smoother transitions, handle latency from transmission between the controller and the simulator, and alleviate the trajectory generator of some computation overhead. 
+
+ 
+        double x = s_x(s) + d*s_dx(s);
+        double y = s_y(s) + d*s_dy(s);
+
+### 1. Generate Predictions from Sensor Fusion Data
+
+From sensor fusion data received from the simulator we are getting current position and speed for nearby cars. To predict their future states I assume that they have constant speed and keep the same lane. For each car was generated trajectory for 10 sec with step 0.2 sec.
+
+### 2. Generate Trajectories for The Car
+
+As our car don't have any final goal on the road there are no need of many states for the car, or even any states at all. For implementation I've choosen approach described in   [Optimal Trajectory Generation For Dynamic Street Scenarious in A Frenet Frame](https://d17h27t6h515a5.cloudfront.net/topher/2017/July/595fd482_werling-optimal-trajectory-generation-for-dynamic-street-scenarios-in-a-frenet-frame/werling-optimal-trajectory-generation-for-dynamic-street-scenarios-in-a-frenet-frame.pdf). 
+ A Path-Planner generates a set of trajectories with start state at the end of previous path and different target `s` and `d` states and different time reaching those states. Then for each trajectory we produce two quintic polynomial, jerk-minimizing (JMT) trajectories, one for `s` and another for `d` state. Combination of them gives us sequence of Frenet coordinates for path generation.
+
+### 3. Determine Best Trajectory
+
+With each trajectory we associate cost value, which calculates based on:
+1. Collision cost: penalize collisions with other vehicles
+2. Safety cost: penalize being too close to other vehicles
+3. Jerk, Acceleration cost: penalize exceeding maximum allowed values
+4. Velocity cost: penalize velocity exceeding 50 mph and velocity which are much lower then 50 mph
+5. Lane cost: penalize trajectory leading to slow lanes
+
+Trajectory with the lowest cost are used to generate new path.
+
+### 4. Produce New Path
+
+New path is union of old path points and some points along selected trajectory starting where previous path have ended. No smoothing is performed.
+
+## Conclusion
+
+The resulting path planner works good, by changing cost coefficients and car behaviour could be changed by changing cost function. Currently car could drive 7 miles without accident, sometimes when car in outside lane there message that "Car outside the lane" when visually car in the middle of the lane.
+![7 miles](screenshot.png)
+
+I still need to improve cost function, should penalize car staying outside the lane and penalize when car comes closely to the leading car.
+
+*the description below is Udacity's original README for the project repo*
+
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
    

@@ -205,5 +205,15 @@ double Map::laneToD(const int lane) {
 }
 
 int Map::dToLane(const double d) {
-    return 0;
+    if( d < 0 || d > 12) {
+        return -1;
+    }
+
+    if(d <= 4)
+        return 0;
+
+    if(d <= 8)
+        return 1;
+
+    return 2;
 }

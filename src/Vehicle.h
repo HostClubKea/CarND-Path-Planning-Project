@@ -31,6 +31,8 @@ class Vehicle {
     /* Current lane. */
     int lane;
 
+    double length;
+
     vector<double> start_s;
     vector<double> start_d;
 
